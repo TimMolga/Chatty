@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/semantic-ui@2.4.2/dist/semantic.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather+Sans&family=Roboto:wght@900&display=swap" rel="stylesheet">
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+    <title>Chatty</title>
+    <style>
+        /* chat page styles */
+        
+        body {
+            background-color: lightblue;
+        }
+        
+        .chat-title {
+            font-family: 'Roboto', sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        
+        .chat-subtitle {
+            font-family: 'Roboto', sans-serif;
+            text-align: center;
+            margin-top: 10%;
+        }
+        
+        #chat-page {
+            height: 100%;
+        }
+        /* left rail styles */
+        
+        #left-rail {
+            background-color: #8FBC8F;
+            height: 80%;
+            border: 7px double #556B2F;
+            border-radius: 20px 0px 0px 20px;
+            box-shadow: 5px 10px 18px black;
+        }
+        
+        #user-list,
+        #channel-list {
+            height: 33%;
+            width: 100%;
+            overflow-y: auto;
+            background-color: rgb(127, 167, 127);
+        }
+        
+        .list-item {
+            margin-top: 15px;
+            margin-left: 10%;
+        }
+        /* right rail styles */
+        
+        #right-rail {
+            background-color: #8FBC8F;
+            height: 80%;
+            border: 7px double #556B2F;
+            border-radius: 0px 20px 20px 0px;
+            box-shadow: 5px 10px 18px black;
+        }
+        
+        #message-list {
+            height: 75%;
+            width: 100%;
+            background-color: white;
+            overflow-y: auto;
+        }
+        
+        .message-format {
+            font-family: 'Merriweather Sans', sans-serif;
+            margin: 20px 20px 20px 20px;
+            font-size: 16px;
+        }
+        
+        .channel-button {
+            width: 90%;
+        }
+        /* login page styles and animation*/
+        
+        @keyframes hideloginpage {
+            0% {
+                height: 100%;
+            }
+            25% {
+                height: 75%;
+            }
+            50% {
+                height: 50%;
+            }
+            75% {
+                height: 25%;
+            }
+            100% {
+                height: 0%;
+                display: none;
+            }
+        }
+        
+        @keyframes hideloginform {
+            0% {
+                margin-top: 20%;
+            }
+            25% {
+                margin-top: 10%;
+            }
+            50% {
+                margin-top: 5%;
+            }
+            75% {
+                margin-top: 0%;
+                visibility: hidden;
+            }
+            100% {
+                margin-top: 0%;
+                visibility: hidden;
+            }
+        }
+        
+        @keyframes stroke {
+            100% {
+                stroke-dashoffset: 0;
+            }
+        }
+        
+        @keyframes scale {
+            0%,
+            100% {
+                transform: none;
+            }
+            50% {
+                transform: scale3d(1.1, 1.1, 1);
+            }
+        }
+        
+        @keyframes fill {
+            100% {
+                box-shadow: inset 0px 0px 0px 30px #7ac142;
+            }
+        }
+        
+        #login-page {
+            position: absolute;
+            z-index: 1;
+            background-color: #8FBC8F;
+            top: 0px;
+            height: 100%;
+            width: 100%;
+            animation-name: hideloginpage;
+            animation-duration: 500ms;
+            animation-fill-mode: forwards;
+            animation-play-state: paused;
+            animation-timing-function: linear;
+            animation-delay: 2s;
+        }
+        
+        #login-form {
+            width: 40%;
+            margin: 0 auto;
+            margin-top: 20%;
+            animation-name: hideloginform;
+            animation-duration: 400ms;
+            animation-fill-mode: forwards;
+            animation-play-state: paused;
+            animation-timing-function: linear;
+            animation-delay: 2s;
+        }
+        
+        #checkmark_circle {
+            stroke-dasharray: 166;
+            stroke-dashoffset: 166;
+            stroke-width: 2;
+            stroke-miterlimit: 10;
+            stroke: black;
+            fill: none;
+            animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+            animation-play-state: paused;
+        }
+        
+        #checkmark {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: block;
+            stroke-width: 2;
+            stroke: black;
+            stroke-miterlimit: 10;
+            margin: 10% auto;
+            box-shadow: inset 0px 0px 0px white;
+            animation: fill .4s ease-in-out .4s forwards, scale .3s ease-in-out .9s both;
+            animation-play-state: paused;
+        }
+        
+        #checkmark_check {
+            transform-origin: 50% 50%;
+            stroke-dasharray: 48;
+            stroke-dashoffset: 48;
+            animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+            animation-play-state: paused;
+        }
+        
+        #user-error {
+            width: 50%;
+            margin: 0 auto;
+            display: none;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div id="chat-page" class="ui middle aligned centered grid">
+        <div id="left-rail" class="three wide column">
+            <h1 class="chat-title">Chatty</h1>
+            <div class="ui inverted divider"></div>
+
+            <h4 class="chat-subtitle">Available Channels</h4>
+            <button class="medium ui green fluid button">New Channel</button>
+            <div id="channel-list" class="ui list">
+                <div class="list-item item">
+                    <button class="channel-button small ui labeled icon black button">
+                        <i class="bullhorn icon"></i>
+                        Lobby
+                    </button>
+                </div>
+            </div>
+
+            <h4 class="chat-subtitle">Online Users</h4>
+            <div id="user-list" class="ui list">
+                <div class="list-item item">
+                </div>
+            </div>
+
+        </div>
+        <div id="right-rail" class="nine wide column">
+            <button class="medium ui right floated black button">Logout</button>
+            <h1 class="chat-title">Channel Name</h1>
+            <div class="ui inverted divider"></div>
+            <div id="message-list" class="ui list">
+                {% for message in messages%}
+                <div class="message-format item">
+                    <div class="content">
+                        <div class="ui large label">{{message[1]}} @ {{message[0]}}: </div> &nbsp {{message[2]}}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="huge ui left action fluid input">
+                <button id="send-message" class="ui black button">
+                  Send Message
+                </button>
+                <input id="message-input" type="text" placeholder="Enter message...">
+            </div>
+        </div>
+    </div>
+    <div id="login-page">
+        <form id="login-form" class="ui large form">
+            <div class="ui segment">
+                <h2 class="chat-title">
+                    <div class="content">
+                        Enter a Display Name
+                    </div>
+                </h2>
+                <div class="field">
+                    <div class="ui left icon input">
+                        <i class="user icon"></i>
+                        <input id="login-input" type="text" name="display-name" placeholder="Enter a display name...">
+                    </div>
+                </div>
+                <button id="login-button" class="ui fluid large black submit button">Login</button>
+            </div>
+            <svg id="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                <circle id="checkmark_circle" cx="26" cy="26" r="25" fill="none"/>
+                <path id="checkmark_check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+            </svg>
+        </form>
+
+        <span id="user-error"></span>
+
+    </div>
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', () => {
+            let socket = io();
+            socket.on('connect', () => {
+                const localUser = localStorage.getItem('user');
+                const localChannel = localStorage.getItem('channel');
+                if (localUser || localChannel) {
+                    const user =
+                        `<div class="list-item item">
+                        <i class="user icon"></i>
+                        <div class="content">
+                            ${localUser}
+                        </div>
+                        </div>`;
+                    const welcomemessage =
+                        `<div class="message-format item">
+                        <div class="content">
+                            <div class="ui green label">${localUser} has entered the chat.</div>      
+                        </div>
+                        </div>`;
+                    document.getElementById("login-page").style.display = "none";
+                    document.getElementById("login-form").style.display = "none";
+                    document.getElementById('user-list').innerHTML += user;
+                    document.getElementById('message-list').innerHTML += welcomemessage;
+                    socket.emit('add user', {
+                        'username': localUser,
+                        'channel': localChannel
+                    });
+                } else {
+                    document.getElementById('login-button').addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const username = document.getElementById('login-input').value;
+                        const channel = Math.random().toString(36).substr(2, 9);
+                        socket.emit('add user', {
+                            'username': username,
+                            'channel': channel
+                        });
+                    });
+                };
+
+                document.getElementById('send-message').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const time = new Date().toLocaleTimeString();
+                    const message = document.getElementById('message-input').value;
+                    const localChannel = localStorage.getItem('channel');
+                    const localUser = localStorage.getItem('user');
+                    socket.emit('send message', {
+                        "username": localUser,
+                        "message": message,
+                        "time": time,
+                        "channel": localChannel
+                    });
+                    document.getElementById('message-input').value = '';
+                });
+            });
+
+            socket.on('errors', data => {
+                const errormessage =
+                    `<div id="username-error" class="ui negative message">
+                    <p>${data.error}</p>
+                    </div>`;
+                document.getElementById('user-error').style.display = 'block';
+                document.getElementById('user-error').innerHTML = errormessage;
+            });
+
+            socket.on('announce user', data => {
+                const localUser = localStorage.getItem('user');
+                const localChannel = localStorage.getItem('channel');
+                const user =
+                    `<div class="list-item item">
+                    <i class="user icon"></i>
+                    <div class="content">
+                        ${data.username}
+                    </div>
+                </div>`;
+                const welcomemessage =
+                    `<div class="message-format item">
+                        <div class="content">
+                            ${data.username} has entered the chat.
+                        </div>
+                    </div>`;
+                if (localUser || localChannel) {
+                    document.getElementById("login-page").style.display = "none";
+                    document.getElementById("login-form").style.display = "none";
+                    document.getElementById('user-list').innerHTML += localUser;
+                    document.getElementById('message-list').innerHTML += welcomemessage;
+                } else {
+                    localStorage.setItem('user', data.username);
+                    localStorage.setItem('channel', data.channel);
+                    document.getElementById("login-page").style.animationPlayState = "running";
+                    document.getElementById("login-form").style.animationPlayState = "running";
+                    document.getElementById("checkmark").style.animationPlayState = "running";
+                    document.getElementById("checkmark_circle").style.animationPlayState = "running";
+                    document.getElementById("checkmark_check").style.animationPlayState = "running";
+                    document.getElementById('user-list').innerHTML += user;
+                    document.getElementById('message-list').value += welcomemessage;
+                    document.getElementById('user-error').style.display = 'none';
+                }
+            });
+
+            socket.on('announce message', data => {
+                const message =
+                    `<div class="message-format item">
+                        <div class="content">
+                            <div class="ui large label">${data.username} @ ${data.time}: </div> &nbsp ${data.message}
+                        </div>
+                    </div>`;
+                document.getElementById('message-list').innerHTML += message;
+            });
+        });
+    </script>
+</body>
+
+</html>
