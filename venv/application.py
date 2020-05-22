@@ -13,7 +13,7 @@ errors = {'channelExists': 'That channel already exists.', 'userExists': 'That u
 
 @app.route('/')
 def index():
-    return render_template('index.html', messages=channels['general'])
+    return render_template('index.html', messages=channels['general'], channels=channels)
 
 @socketio.on('add user')
 def add_user(data):
@@ -34,6 +34,12 @@ def add_user(data):
             join_room(general)
             emit('announce user', {'username': username, 'channel': general}, broadcast=True)
 
+@socketio.on('add channel')
+def add_channel(data):
+    channel = data['channel']
+    channels[channel] = []
+    emit('announce channel', {'channel': channel}, broadcast=True)
+
 @socketio.on('send message')
 def send_message(data):
     username = data['username']
@@ -42,3 +48,18 @@ def send_message(data):
     time = data['time']
     channels[channel].append([time, username, message])
     emit('announce message', {'username': username, 'channel': channel, 'message': message, 'time': time}, broadcast=True)
+
+@socketio.on('join channel')
+def join_channel(data):
+    channel = data['channel']
+    current_channel = data['currentChannel']
+    leave_room(current_channel)
+    join_room(channel)
+    emit('change channel', {'channel': channel})
+
+@socketio.on('logout')
+def logout(data):
+    user = data['user']
+    channel = data['channel']
+    online_users.remove(user)
+    leave_room(channel)

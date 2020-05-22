@@ -38,7 +38,13 @@
             box-shadow: 5px 10px 18px black;
         }
         
-        #user-list,
+        #user-list {
+            height: 30%;
+            width: 100%;
+            overflow-y: auto;
+            background-color: rgb(127, 167, 127);
+        }
+        
         #channel-list {
             height: 33%;
             width: 100%;
@@ -213,16 +219,20 @@
         <div id="left-rail" class="three wide column">
             <h1 class="chat-title">Chatty</h1>
             <div class="ui inverted divider"></div>
-
             <h4 class="chat-subtitle">Available Channels</h4>
-            <button class="medium ui green fluid button">New Channel</button>
             <div id="channel-list" class="ui list">
+                {% for channel in channels %}
                 <div class="list-item item">
                     <button class="channel-button small ui labeled icon black button">
                         <i class="bullhorn icon"></i>
-                        Lobby
+                        {{channel}}
                     </button>
                 </div>
+                {% endfor %}
+            </div>
+            <div class="ui form">
+                <input type="text" id="channel-input" placeholder="Enter a channel name...">
+                <button id="create-channel" class="ui fluid green button">Create Channel</button>
             </div>
 
             <h4 class="chat-subtitle">Online Users</h4>
@@ -230,10 +240,10 @@
                 <div class="list-item item">
                 </div>
             </div>
-
         </div>
+
         <div id="right-rail" class="nine wide column">
-            <button class="medium ui right floated black button">Logout</button>
+            <button id="logout-button" class="medium ui right floated black button">Logout</button>
             <h1 class="chat-title">Channel Name</h1>
             <div class="ui inverted divider"></div>
             <div id="message-list" class="ui list">
@@ -253,6 +263,7 @@
             </div>
         </div>
     </div>
+
     <div id="login-page">
         <form id="login-form" class="ui large form">
             <div class="ui segment">
@@ -274,10 +285,9 @@
                 <path id="checkmark_check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
             </svg>
         </form>
-
         <span id="user-error"></span>
-
     </div>
+
     <script type="text/javascript">
         document.addEventListener('DOMContentLoaded', () => {
             let socket = io();
@@ -332,6 +342,38 @@
                     });
                     document.getElementById('message-input').value = '';
                 });
+
+                document.getElementById('create-channel').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const channel = document.getElementById('channel-input').value;
+                    socket.emit('add channel', {
+                        "channel": channel
+                    });
+                    document.getElementById('channel-input').value = '';
+                });
+
+                document.querySelectorAll('.channel-button').forEach(button => {
+                    button.onclick = () => {
+                        const channel = button.value;
+                        const currentChannel = localStorage.getItem('channel');
+                        socket.emit('join channel', {
+                            "channel": channel,
+                            "currentChannel": currentChannel
+                        });
+                    };
+                });
+
+                document.getElementById('logout-button').addEventListener('click', (e) => {
+                    const user = localStorage.getItem('user');
+                    const channel = localStorage.getItem('channel');
+                    socket.emit('logout', {
+                        "user": user,
+                        "channel": channel
+                    })
+                    localStorage.removeItem('user');
+                    localStorage.removeItem('channel');
+                    location.reload();
+                });
             });
 
             socket.on('errors', data => {
@@ -378,6 +420,17 @@
                 }
             });
 
+            socket.on('announce channel', data => {
+                const channel =
+                    `<div class="list-item item">
+                    <button class="channel-button small ui labeled icon black button" value="${data.channel}">
+                        <i class="bullhorn icon"></i>
+                        ${data.channel}
+                    </button>
+                </div>`;
+                document.getElementById('channel-list').innerHTML += channel;
+            })
+
             socket.on('announce message', data => {
                 const message =
                     `<div class="message-format item">
@@ -386,6 +439,10 @@
                         </div>
                     </div>`;
                 document.getElementById('message-list').innerHTML += message;
+            });
+
+            socket.on('change channel', data => {
+                const localChannel = localStorage.setItem('channel', data.channel)
             });
         });
     </script>
