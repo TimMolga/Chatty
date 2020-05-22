@@ -2,5 +2,4 @@
 An instant messaging application utilizing Flask and Socket.IO
 
 ### TO DO:
-##### 1: Update UI based on channel
-##### 2: Refactor Code
+##### 1: Refactor Code
