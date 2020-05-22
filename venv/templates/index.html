@@ -222,29 +222,35 @@
             <h4 class="chat-subtitle">Available Channels</h4>
             <div id="channel-list" class="ui list">
                 {% for channel in channels %}
-                <div class="list-item item">
-                    <button class="channel-button small ui labeled icon black button">
+                <form class="list-item item" action="{{url_for('channel', channel=channel)}}" method="POST">
+                    <button class="channel-button small ui labeled icon black button" value="{{channel}}">
                         <i class="bullhorn icon"></i>
                         {{channel}}
                     </button>
-                </div>
+                </form>
                 {% endfor %}
             </div>
-            <div class="ui form">
+            <form class="ui form">
                 <input type="text" id="channel-input" placeholder="Enter a channel name...">
                 <button id="create-channel" class="ui fluid green button">Create Channel</button>
-            </div>
+            </form>
 
             <h4 class="chat-subtitle">Online Users</h4>
             <div id="user-list" class="ui list">
+                {% for user in users %}
                 <div class="list-item item">
+                    <i class="user icon"></i>
+                    <div class="username-list content">
+                        {{user}}
+                    </div>
                 </div>
+                {% endfor %}
             </div>
         </div>
 
         <div id="right-rail" class="nine wide column">
             <button id="logout-button" class="medium ui right floated black button">Logout</button>
-            <h1 class="chat-title">Channel Name</h1>
+            <h1 id="channel-name" class="chat-title">{{currentChannel}} {{temp}}</h1>
             <div class="ui inverted divider"></div>
             <div id="message-list" class="ui list">
                 {% for message in messages%}
@@ -290,28 +296,14 @@
 
     <script type="text/javascript">
         document.addEventListener('DOMContentLoaded', () => {
+
             let socket = io();
             socket.on('connect', () => {
                 const localUser = localStorage.getItem('user');
                 const localChannel = localStorage.getItem('channel');
                 if (localUser || localChannel) {
-                    const user =
-                        `<div class="list-item item">
-                        <i class="user icon"></i>
-                        <div class="content">
-                            ${localUser}
-                        </div>
-                        </div>`;
-                    const welcomemessage =
-                        `<div class="message-format item">
-                        <div class="content">
-                            <div class="ui green label">${localUser} has entered the chat.</div>      
-                        </div>
-                        </div>`;
                     document.getElementById("login-page").style.display = "none";
                     document.getElementById("login-form").style.display = "none";
-                    document.getElementById('user-list').innerHTML += user;
-                    document.getElementById('message-list').innerHTML += welcomemessage;
                     socket.emit('add user', {
                         'username': localUser,
                         'channel': localChannel
@@ -319,12 +311,27 @@
                 } else {
                     document.getElementById('login-button').addEventListener('click', (e) => {
                         e.preventDefault();
+                        const currentUsers = [];
+                        [...document.getElementsByClassName('username-list')].forEach(name => {
+                            currentUsers.push(name.textContent.trim());
+                        })
                         const username = document.getElementById('login-input').value;
-                        const channel = Math.random().toString(36).substr(2, 9);
-                        socket.emit('add user', {
-                            'username': username,
-                            'channel': channel
-                        });
+                        const userExists = currentUsers.includes(username);
+
+                        if (userExists) {
+                            const errormessage =
+                                `<div id="username-error" class="ui negative message">
+                                <p>That user already exists.</p>
+                                </div>`;
+                            document.getElementById('user-error').style.display = 'block';
+                            document.getElementById('user-error').innerHTML = errormessage;
+                        } else {
+                            document.getElementById('user-error').style.display = 'none';
+                            socket.emit('add user', {
+                                'username': username,
+                                'channel': 'General'
+                            });
+                        }
                     });
                 };
 
@@ -343,8 +350,7 @@
                     document.getElementById('message-input').value = '';
                 });
 
-                document.getElementById('create-channel').addEventListener('click', (e) => {
-                    e.preventDefault();
+                document.getElementById('create-channel').addEventListener('click', () => {
                     const channel = document.getElementById('channel-input').value;
                     socket.emit('add channel', {
                         "channel": channel
@@ -352,7 +358,7 @@
                     document.getElementById('channel-input').value = '';
                 });
 
-                document.querySelectorAll('.channel-button').forEach(button => {
+                [...document.getElementsByClassName('channel-button')].forEach(button => {
                     button.onclick = () => {
                         const channel = button.value;
                         const currentChannel = localStorage.getItem('channel');
@@ -360,6 +366,7 @@
                             "channel": channel,
                             "currentChannel": currentChannel
                         });
+
                     };
                 });
 
@@ -376,15 +383,6 @@
                 });
             });
 
-            socket.on('errors', data => {
-                const errormessage =
-                    `<div id="username-error" class="ui negative message">
-                    <p>${data.error}</p>
-                    </div>`;
-                document.getElementById('user-error').style.display = 'block';
-                document.getElementById('user-error').innerHTML = errormessage;
-            });
-
             socket.on('announce user', data => {
                 const localUser = localStorage.getItem('user');
                 const localChannel = localStorage.getItem('channel');
@@ -398,13 +396,12 @@
                 const welcomemessage =
                     `<div class="message-format item">
                         <div class="content">
-                            ${data.username} has entered the chat.
+                            <div class="ui green label">${data.username} has entered the chat.</div> 
                         </div>
                     </div>`;
                 if (localUser || localChannel) {
                     document.getElementById("login-page").style.display = "none";
                     document.getElementById("login-form").style.display = "none";
-                    document.getElementById('user-list').innerHTML += localUser;
                     document.getElementById('message-list').innerHTML += welcomemessage;
                 } else {
                     localStorage.setItem('user', data.username);
@@ -415,7 +412,7 @@
                     document.getElementById("checkmark_circle").style.animationPlayState = "running";
                     document.getElementById("checkmark_check").style.animationPlayState = "running";
                     document.getElementById('user-list').innerHTML += user;
-                    document.getElementById('message-list').value += welcomemessage;
+                    document.getElementById('message-list').innerHTML += welcomemessage;
                     document.getElementById('user-error').style.display = 'none';
                 }
             });
@@ -442,7 +439,9 @@
             });
 
             socket.on('change channel', data => {
-                const localChannel = localStorage.setItem('channel', data.channel)
+                localStorage.setItem('channel', data.channel);
+                const currentChannel = data.channel;
+                document.getElementById('channel-name').innerHTML = currentChannel;
             });
         });
     </script>
