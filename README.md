@@ -19,6 +19,7 @@ Remembering the Channel: If a user is on a channel page, closes the web browser 
 ##### 1: Implement Handlebars
 ##### 2: Separate JavaScript
 ##### 3: Separate Styles
+##### 4: Add Documentation
 
 ### To Run the App:
 
