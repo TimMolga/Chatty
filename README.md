@@ -16,7 +16,9 @@ Sending Messages: Once in a channel, users should be able to send text messages 
 Remembering the Channel: If a user is on a channel page, closes the web browser window, and goes back to your web application, your application should remember what channel the user was on previously and take the user back to that channel.
 
 ### TO DO:
-##### 1: Refactor Code
+##### 1: Implement Handlebars
+##### 2: Separate JavaScript
+##### 3: Separate Styles
 
 ### To Run the App:
 
